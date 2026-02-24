@@ -30,7 +30,7 @@ build:
 	uv build
 
 clean:
-	rm -rf dist/ .pytest_cache/ .venv/
+	rm -rf dist/ .pytest_cache/ .venv/ data/ brain/*.db
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 setup:
