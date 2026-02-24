@@ -12,12 +12,14 @@ Flow per source URL:
 """
 import asyncio
 from urllib.parse import urljoin, urlparse, urldefrag
+import re
 
 import httpx
 from bs4 import BeautifulSoup
 
 from newshive.log import ColorLogger
 from newshive.storage import StorageManager, safe_filename
+from newshive.config import URL_IGNORE_PATTERNS, PAGE_TIMEOUT_SECONDS # NEW
 
 log = ColorLogger("article_discoverer")
 
@@ -40,7 +42,7 @@ class ArticleDiscoverer:
     - Downloading individual articles and saving them
     """
 
-    def __init__(self, storage: StorageManager, timeout: int = 20):
+    def __init__(self, storage: StorageManager, timeout: int = PAGE_TIMEOUT_SECONDS):
         self.storage = storage
         self.timeout = timeout
         log.debug("→ ArticleDiscoverer init")
@@ -85,6 +87,24 @@ class ArticleDiscoverer:
 
         log.debug(f"← extract_child_urls: found {len(found)} URLs")
         return found
+
+    def _filter_ignored_urls(self, urls: set[str]) -> set[str]:
+        """
+        Filters out URLs that match any pattern in URL_IGNORE_PATTERNS.
+        """
+        log.debug(f"→ _filter_ignored_urls: candidates={len(urls)}")
+        filtered_urls = set()
+        for url in urls:
+            ignored = False
+            for pattern in URL_IGNORE_PATTERNS:
+                if re.match(pattern, url):
+                    ignored = True
+                    log.debug(f"Ignoring URL '{url}' due to pattern '{pattern}'")
+                    break
+            if not ignored:
+                filtered_urls.add(url)
+        log.debug(f"← _filter_ignored_urls: kept {len(filtered_urls)} / {len(urls)}")
+        return filtered_urls
 
     # ── Delta Computation ─────────────────────────────────────────────────────
 
@@ -219,6 +239,9 @@ class ArticleDiscoverer:
 
         # Step 2: Extract links
         current_links = self.extract_child_urls(html, source_url)
+
+        # Step 2.5: Filter out ignored URLs
+        current_links = self._filter_ignored_urls(current_links)
 
         # Step 3: Delta vs prior day
         prior_links = self.get_prior_links(source_url, max_lookback)
