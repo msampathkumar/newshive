@@ -66,6 +66,25 @@ LLM_SYSTEM_PROMPT: str = (
 # Regex to find GitHub repository URLs
 GITHUB_REPO_PATTERN: str = r"https?://(?:www\.)?github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+"
 
+# --- Text Cleaning ---
+# Flag to enable or disable the post-extraction text cleaning process.
+ENABLE_TEXT_CLEANING: bool = True
+
+# List of case-insensitive regex patterns to identify and remove boilerplate lines from extracted text.
+# These are designed to be conservative and only match unambiguous junk lines.
+TEXT_CLEANING_REGEX_PATTERNS: list[str] = [
+    r"^\s*subscribe to our newsletter\s*$",
+    r"^\s*all rights reserved\s*$",
+    r"^\s*© \d{4}.*$",
+    r"^\s*copyright © \d{4}.*$",
+    r"^\s*share this article\s*[:\.]?",
+    r"^\s*follow us on\s*.*$",
+    r"^\s*related posts\s*$",
+    r"^\s*----+\s*$",
+    r"^\s*\*\*\*\s*$",
+    r"^\s*====+\s*$",
+]
+
 # -----------------------------------------------------------------------------
 # Database Settings
 # -----------------------------------------------------------------------------

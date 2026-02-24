@@ -12,7 +12,9 @@ from newshive.config import (
     DEFAULT_OLLAMA_MODEL,
     LLM_SYSTEM_PROMPT,
     GITHUB_REPO_PATTERN,
+    ENABLE_TEXT_CLEANING,
 )
+from newshive.text_cleaner import clean_text
 
 log = ColorLogger("content_processor")
 
@@ -128,8 +130,13 @@ class ContentProcessor:
 
         summary = None
         if extracted_text:
+            # Step 2.5: Clean the extracted text if enabled
+            text_to_summarize = extracted_text
+            if ENABLE_TEXT_CLEANING:
+                text_to_summarize = clean_text(extracted_text)
+
             # Step 3: Summarize the extracted text
-            summary = self.summarize(extracted_text)
+            summary = self.summarize(text_to_summarize)
             if summary:
                 # Prepend metadata to the summary
                 date_to_display = published_date or scraped_at
