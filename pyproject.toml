@@ -3,7 +3,20 @@ name = "newshive"
 version = "0.1.0"
 description = "Summarize AI news articles from various sources"
 authors = [{ name = "Sampath Maddula", email = "sampath.maddula@google.com" }]
+readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "beautifulsoup4",
     "requests",
@@ -11,15 +24,25 @@ dependencies = [
     "python-dateutil",
     "google-generativeai",
     "rich",
-    "fastapi",
-    "uvicorn",
-    "ruff",
-    "pytest",
     "sqlite_utils",
     "httpx",
     "ollama",
     "trafilatura>=2.0.0",
 ]
+
+[project.optional-dependencies]
+server = [
+    "fastapi",
+    "uvicorn",
+]
+dev = [
+    "ruff",
+    "pytest",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/msampathkumar/newshive"
+"Bug Tracker" = "https://github.com/msampathkumar/newshive/issues"
 
 [project.scripts]
 newshive = "newshive.cli:cli"
@@ -27,6 +50,3 @@ newshive = "newshive.cli:cli"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/newshive"]
