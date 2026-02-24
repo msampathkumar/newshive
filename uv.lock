@@ -1053,21 +1053,27 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
-    { name = "fastapi", version = "0.128.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "fastapi", version = "0.133.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "feedparser" },
     { name = "google-generativeai" },
     { name = "httpx" },
     { name = "ollama" },
-    { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "pytest", version = "9.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "python-dateutil" },
     { name = "requests" },
     { name = "rich" },
-    { name = "ruff" },
     { name = "sqlite-utils", version = "3.38", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "sqlite-utils", version = "3.39", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "trafilatura" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pytest", version = "9.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "ruff" },
+]
+server = [
+    { name = "fastapi", version = "0.128.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "fastapi", version = "0.133.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "uvicorn", version = "0.39.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "uvicorn", version = "0.41.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
@@ -1075,20 +1081,21 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4" },
-    { name = "fastapi" },
+    { name = "fastapi", marker = "extra == 'server'" },
     { name = "feedparser" },
     { name = "google-generativeai" },
     { name = "httpx" },
     { name = "ollama" },
-    { name = "pytest" },
+    { name = "pytest", marker = "extra == 'dev'" },
     { name = "python-dateutil" },
     { name = "requests" },
     { name = "rich" },
-    { name = "ruff" },
+    { name = "ruff", marker = "extra == 'dev'" },
     { name = "sqlite-utils" },
     { name = "trafilatura", specifier = ">=2.0.0" },
-    { name = "uvicorn" },
+    { name = "uvicorn", marker = "extra == 'server'" },
 ]
+provides-extras = ["server", "dev"]
 
 [[package]]
 name = "ollama"

@@ -26,6 +26,12 @@ MAX_LOOKBACK_DAYS: int = 10
 # List of regex patterns for URLs to ignore during article discovery
 URL_IGNORE_PATTERNS: list[str] = [
     r".*\.xml$",  # Ignore all URLs ending with .xml
+    # Ignore common non-article links from Hacker News
+    r"^https://news\.ycombinator\.com/vote.*",
+    r"^https://news\.ycombinator\.com/from.*",
+    r"^https://news\.ycombinator\.com/user.*",
+    r"^https://news\.ycombinator\.com/submit.*",
+    r"^https://news\.ycombinator\.com/login.*",
 ]
 
 # Default concurrency settings for collection
@@ -45,11 +51,16 @@ DEFAULT_EXTRACTION_CONCURRENCY: int = 3
 LLM_SYSTEM_PROMPT: str = (
     "You are an expert AI news summarizer for a highly technical audience. "
     "Your readers are developers with 1 to 14 years of Software Development Experience. "
-    "They are especially fans of Google Cloud and Gemini. "
+    "Many are especially fans of Google Cloud and Gemini. "
     "Summarize the following text into clear, concise Markdown. "
     "Extract the key takeaway, especially highlighting anything related to "
     "Google Cloud, Vertex AI, Gemini, or general AI developer news. "
     "Do NOT include conversational filler like 'Here is the summary'."
+    "Share the information as if its a informal markdown report."
+    "The section should include Title, Short Descriptions, Full Story, Takeaways, Future Explorations, Conclusion."
+    "It is not mandatory to have all the section in the report but have a good content flow is great."
+    "Include an many relavant flow charts that summarise the information."
+    "Your report does not have to big but capture the essence of key information."
 )
 
 # Regex to find GitHub repository URLs
