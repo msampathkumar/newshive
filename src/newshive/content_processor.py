@@ -4,7 +4,8 @@ ContentProcessor — uses a local LLM via Ollama to extract and summarize articl
 import ollama
 import re
 import trafilatura
-from datetime import datetime # NEW # NEW
+from datetime import datetime
+from bs4 import BeautifulSoup
 
 from newshive.log import ColorLogger
 
@@ -17,6 +18,29 @@ class ContentProcessor:
     def __init__(self, model_name: str = "gemma3:1b"):
         self.model_name = model_name
         log.debug(f"→ ContentProcessor init: model={model_name}")
+
+    def extract_title(self, raw_html: str) -> str | None:
+        """
+        Extracts the article title from raw HTML using BeautifulSoup.
+        Looks for <title> tag first, then <h1> or other common title tags.
+        """
+        log.debug(f"→ extract_title: raw_html_len={len(raw_html)}")
+        soup = BeautifulSoup(raw_html, "html.parser")
+        
+        # Try to get from <title> tag
+        title_tag = soup.find("title")
+        if title_tag and title_tag.string:
+            log.debug(f"← extract_title: from <title> - {title_tag.string.strip()}")
+            return title_tag.string.strip()
+
+        # Try to get from <h1> tag
+        h1_tag = soup.find("h1")
+        if h1_tag and h1_tag.string:
+            log.debug(f"← extract_title: from <h1> - {h1_tag.string.strip()}")
+            return h1_tag.string.strip()
+
+        log.debug(f"← extract_title: No title found.")
+        return None
 
     def extract_text_and_date(self, raw_html: str, url: str) -> tuple[str | None, str | None]:
         """
@@ -93,13 +117,16 @@ class ContentProcessor:
         log.debug(f"← summarize done: output_length={len(result)}")
         return result
 
-    def process_article(self, raw_html: str, url: str) -> dict:
+    def process_article(self, raw_html: str, url: str, scraped_at: str) -> dict:
         """
         Orchestrates extraction of text, published date, GitHub links,
         and summary from raw article HTML.
         Returns a dictionary of all extracted and processed data.
         """
         log.debug(f"→ process_article: url={url}")
+
+        # Step 0: Extract Title
+        title = self.extract_title(raw_html) or "Untitled Article"
 
         # Step 1: Extract main text and published date
         extracted_text, published_date = self.extract_text_and_date(raw_html, url)
@@ -112,8 +139,20 @@ class ContentProcessor:
         if extracted_text:
             # Step 3: Summarize the extracted text
             summary = self.summarize(extracted_text)
+            if summary:
+                # Prepend metadata to the summary
+                date_to_display = published_date or scraped_at
+                metadata_header = (
+                    f"----\n"
+                    f"# Title: {title}\n"
+                    f"# Date: {date_to_display}\n"
+                    f"# URL link: <{url}>\n"
+                    f"---\n\n"
+                )
+                summary = metadata_header + summary
         else:
             log.warning(f"No text extracted for {url}, skipping summarization.")
+
 
         log.debug(f"← process_article done: summary_len={len(summary) if summary else 0}, date={published_date}, github_links={len(github_links)}")
         return {

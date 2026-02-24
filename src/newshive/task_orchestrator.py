@@ -162,7 +162,7 @@ async def _extract_one_article(
     # Run AI processing (extraction + summarization)
     loop = asyncio.get_event_loop()
     try:
-        processed_data = await loop.run_in_executor(None, processor.process_article, html, url)
+        processed_data = await loop.run_in_executor(None, processor.process_article, html, url, row["scraped_at"])
         summary        = processed_data.get("summary")
         extracted_text = processed_data.get("extracted_text")
         published_date = processed_data.get("published_date")
