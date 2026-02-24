@@ -15,6 +15,7 @@ Global options:
   --debug                       Enable DEBUG-level log output
 """
 import asyncio
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -32,6 +33,7 @@ from newshive.config import (
     DEFAULT_ARTICLE_CONCURRENCY,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_EXTRACTION_CONCURRENCY,
+    PIPELINE_LOCK_FILE,
 )
 
 # CLI-level logger
@@ -40,6 +42,14 @@ log = ColorLogger("cli")
 
 def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d")
+
+
+def _format_duration(seconds: float) -> str:
+    """Formats a duration in seconds into a human-readable string."""
+    minutes, seconds = divmod(seconds, 60)
+    if minutes > 0:
+        return f"{int(minutes)}m {int(seconds)}s"
+    return f"{seconds:.2f}s"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,6 +150,7 @@ def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
         log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
         return
 
+    start_time = time.monotonic()
     try:
         PIPELINE_LOCK_FILE.touch()
         date = date or _today()
@@ -157,6 +168,8 @@ def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
         ))
         log.success(f"Collection done: {len(saved)} new articles downloaded")
     finally:
+        duration = time.monotonic() - start_time
+        log.info(f"Collect job finished in {_format_duration(duration)}")
         if PIPELINE_LOCK_FILE.exists():
             PIPELINE_LOCK_FILE.unlink()
 
@@ -179,6 +192,7 @@ def process(ctx, date, model, concurrency):
         log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
         return
 
+    start_time = time.monotonic()
     try:
         PIPELINE_LOCK_FILE.touch()
         date = date or _today()
@@ -195,6 +209,8 @@ def process(ctx, date, model, concurrency):
         ))
         log.success(f"Extraction done: {count} articles extracted")
     finally:
+        duration = time.monotonic() - start_time
+        log.info(f"Process job finished in {_format_duration(duration)}")
         if PIPELINE_LOCK_FILE.exists():
             PIPELINE_LOCK_FILE.unlink()
 
@@ -216,6 +232,7 @@ def run_pipeline(ctx, date, model, max_lookback):
         log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
         return
 
+    start_time = time.monotonic()
     try:
         PIPELINE_LOCK_FILE.touch()
         date = date or _today()
@@ -224,6 +241,7 @@ def run_pipeline(ctx, date, model, max_lookback):
         storage = StorageManager(ctx.obj["data_dir"])
 
         async def _run():
+            collect_start = time.monotonic()
             saved = await run_collection_pipeline(
                 db=db,
                 storage=storage,
@@ -232,7 +250,10 @@ def run_pipeline(ctx, date, model, max_lookback):
                 source_concurrency=DEFAULT_SOURCE_CONCURRENCY,
                 article_concurrency=DEFAULT_ARTICLE_CONCURRENCY,
             )
+            log.info(f"Collection phase finished in {_format_duration(time.monotonic() - collect_start)}")
             log.info(f"Collection phase done: {len(saved)} new articles")
+
+            process_start = time.monotonic()
             count = await run_extraction_pipeline(
                 db=db,
                 storage=storage,
@@ -240,14 +261,16 @@ def run_pipeline(ctx, date, model, max_lookback):
                 model=model,
                 concurrency=DEFAULT_EXTRACTION_CONCURRENCY,
             )
+            log.info(f"Extraction phase finished in {_format_duration(time.monotonic() - process_start)}")
             return saved, count
 
         saved, count = asyncio.run(_run())
         log.success(f"Pipeline complete: {len(saved)} articles collected, {count} extracted")
     finally:
+        duration = time.monotonic() - start_time
+        log.info(f"Run job finished in {_format_duration(duration)}")
         if PIPELINE_LOCK_FILE.exists():
             PIPELINE_LOCK_FILE.unlink()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point

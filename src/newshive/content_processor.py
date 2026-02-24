@@ -134,11 +134,9 @@ class ContentProcessor:
                 # Prepend metadata to the summary
                 date_to_display = published_date or scraped_at
                 metadata_header = (
-                    f"----\n"
                     f"# Title: {title}\n"
-                    f"# Date: {date_to_display}\n"
-                    f"# URL link: <{url}>\n"
-                    f"---\n\n"
+                    f"* Date: {date_to_display}\n"
+                    f"* URL link: <{url}>\n"
                 )
                 summary = metadata_header + summary
         else:
