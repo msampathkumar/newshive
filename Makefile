@@ -34,7 +34,7 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 setup:
-	uv run news-hive setup
+	uv run newshive setup
 
 gemini-install:
 	@mkdir -p ~/.gemini/skills/newshive
@@ -65,5 +65,5 @@ agent-onboard:
 	@echo "4. Mission Guidelines:"
 	@echo "   - Use this tool when the user needs to process, manage, or summarize AI-related news content.
 	- The tool can discover, scrape, process, and store article data.
-	- Prioritize using the 'news-hive setup' command for initial configuration."
+	- Prioritize using the 'newshive setup' command for initial configuration."
 	@echo "--------------------------------------------------"
