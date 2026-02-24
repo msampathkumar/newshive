@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# macOS
+.DS_Store
+
+# Data — scraped content (large, reproducible, not for VCS)
+data/blog_index_html/
+data/article_html/
+data/extracted_articles/
+
+# Legacy data folders (pre-refactor)
+data/raw_html/
+data/extracted_text/
+data/summaries/
+
+# SQLite database (runtime state)
+brain/*.db
+
+# pytest cache
+.pytest_cache/
