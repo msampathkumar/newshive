@@ -24,6 +24,7 @@ from newshive.storage import StorageManager
 from newshive.metadata_manager import MetadataManager, STATUS_DOWNLOADED, STATUS_EXTRACTED, STATUS_ERROR_FETCH, STATUS_ERROR_LLM
 from newshive.article_discoverer import ArticleDiscoverer
 from newshive.content_processor import ContentProcessor
+from newshive.config import PIPELINE_LOCK_FILE
 
 log = ColorLogger("task_orchestrator")
 
@@ -46,6 +47,10 @@ async def _collect_one_source(
     article_concurrency: int,
 ) -> list[str]:
     """Handle collection for a single source URL."""
+    if not PIPELINE_LOCK_FILE.exists():
+        log.warning("Lock file removed. Stopping collection task.")
+        return []
+
     log.debug(f"→ _collect_one_source: {source_url}")
 
     # Step 1-5: Discover new article URLs
@@ -60,6 +65,11 @@ async def _collect_one_source(
         log.info(f"No new articles found for: {source_url}")
         return []
 
+    # Check lock file again before starting downloads
+    if not PIPELINE_LOCK_FILE.exists():
+        log.warning("Lock file removed. Aborting article download.")
+        return []
+
     # Step 6: Download articles in parallel (bounded)
     log.info(f"Downloading {len(new_article_urls)} new articles from {source_url} ...")
     download_results = await discoverer.download_articles_batch(
@@ -69,6 +79,10 @@ async def _collect_one_source(
     # Step 7: Register in database
     saved: list[str] = []
     for url, html in download_results.items():
+        if not PIPELINE_LOCK_FILE.exists():
+            log.warning("Lock file removed. Halting article registration.")
+            break
+
         if html is not None:
             db.register_article(url, source_url=source_url, status=STATUS_DOWNLOADED)
             saved.append(url)
@@ -119,6 +133,9 @@ async def run_collection_pipeline(
 
     async def _bounded(source: dict) -> list[str]:
         async with sem:
+            if not PIPELINE_LOCK_FILE.exists():
+                log.warning("Lock file removed. Skipping source.")
+                return []
             return await _collect_one_source(
                 source_url=source["url"],
                 date=date,
@@ -149,6 +166,10 @@ async def _extract_one_article(
     processor: ContentProcessor,
 ) -> bool:
     """Run AI extraction for a single article."""
+    if not PIPELINE_LOCK_FILE.exists():
+        log.warning("Lock file removed. Skipping extraction task.")
+        return False
+
     url = row["url"]
     log.debug(f"→ _extract_one_article: {url}")
 

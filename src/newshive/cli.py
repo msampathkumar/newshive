@@ -136,20 +136,29 @@ def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
     Fetch blog index pages, compute new article deltas, and download new articles.
     Saves to: blog_index_html/YYYYMMDD/ and article_html/YYYYMMDD/
     """
-    date = date or _today()
-    log.info(f"Starting collection for date={date}")
-    db      = MetadataManager(ctx.obj["db_path"])
-    storage = StorageManager(ctx.obj["data_dir"])
+    if PIPELINE_LOCK_FILE.exists():
+        log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
+        return
 
-    saved = asyncio.run(run_collection_pipeline(
-        db=db,
-        storage=storage,
-        date=date,
-        max_lookback=max_lookback,
-        source_concurrency=source_concurrency,
-        article_concurrency=article_concurrency,
-    ))
-    log.success(f"Collection done: {len(saved)} new articles downloaded")
+    try:
+        PIPELINE_LOCK_FILE.touch()
+        date = date or _today()
+        log.info(f"Starting collection for date={date}")
+        db      = MetadataManager(ctx.obj["db_path"])
+        storage = StorageManager(ctx.obj["data_dir"])
+
+        saved = asyncio.run(run_collection_pipeline(
+            db=db,
+            storage=storage,
+            date=date,
+            max_lookback=max_lookback,
+            source_concurrency=source_concurrency,
+            article_concurrency=article_concurrency,
+        ))
+        log.success(f"Collection done: {len(saved)} new articles downloaded")
+    finally:
+        if PIPELINE_LOCK_FILE.exists():
+            PIPELINE_LOCK_FILE.unlink()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -166,19 +175,28 @@ def process(ctx, date, model, concurrency):
     Run AI extraction on downloaded articles.
     Saves summaries to: extracted_articles/YYYYMMDD/
     """
-    date = date or _today()
-    log.info(f"Starting extraction for date={date}, model={model}")
-    db      = MetadataManager(ctx.obj["db_path"])
-    storage = StorageManager(ctx.obj["data_dir"])
+    if PIPELINE_LOCK_FILE.exists():
+        log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
+        return
 
-    count = asyncio.run(run_extraction_pipeline(
-        db=db,
-        storage=storage,
-        date=date,
-        model=model,
-        concurrency=concurrency,
-    ))
-    log.success(f"Extraction done: {count} articles extracted")
+    try:
+        PIPELINE_LOCK_FILE.touch()
+        date = date or _today()
+        log.info(f"Starting extraction for date={date}, model={model}")
+        db      = MetadataManager(ctx.obj["db_path"])
+        storage = StorageManager(ctx.obj["data_dir"])
+
+        count = asyncio.run(run_extraction_pipeline(
+            db=db,
+            storage=storage,
+            date=date,
+            model=model,
+            concurrency=concurrency,
+        ))
+        log.success(f"Extraction done: {count} articles extracted")
+    finally:
+        if PIPELINE_LOCK_FILE.exists():
+            PIPELINE_LOCK_FILE.unlink()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -194,32 +212,41 @@ def run_pipeline(ctx, date, model, max_lookback):
     """
     End-to-end pipeline: collect new articles then run AI extraction.
     """
-    date = date or _today()
-    log.info(f"Starting end-to-end pipeline for date={date}")
-    db      = MetadataManager(ctx.obj["db_path"])
-    storage = StorageManager(ctx.obj["data_dir"])
+    if PIPELINE_LOCK_FILE.exists():
+        log.warning("Pipeline is already running. If this is an error, remove the .pipeline.lock file.")
+        return
 
-    async def _run():
-        saved = await run_collection_pipeline(
-            db=db,
-            storage=storage,
-            date=date,
-            max_lookback=max_lookback,
-            source_concurrency=DEFAULT_SOURCE_CONCURRENCY,
-            article_concurrency=DEFAULT_ARTICLE_CONCURRENCY,
-        )
-        log.info(f"Collection phase done: {len(saved)} new articles")
-        count = await run_extraction_pipeline(
-            db=db,
-            storage=storage,
-            date=date,
-            model=model,
-            concurrency=DEFAULT_EXTRACTION_CONCURRENCY,
-        )
-        return saved, count
+    try:
+        PIPELINE_LOCK_FILE.touch()
+        date = date or _today()
+        log.info(f"Starting end-to-end pipeline for date={date}")
+        db      = MetadataManager(ctx.obj["db_path"])
+        storage = StorageManager(ctx.obj["data_dir"])
 
-    saved, count = asyncio.run(_run())
-    log.success(f"Pipeline complete: {len(saved)} articles collected, {count} extracted")
+        async def _run():
+            saved = await run_collection_pipeline(
+                db=db,
+                storage=storage,
+                date=date,
+                max_lookback=max_lookback,
+                source_concurrency=DEFAULT_SOURCE_CONCURRENCY,
+                article_concurrency=DEFAULT_ARTICLE_CONCURRENCY,
+            )
+            log.info(f"Collection phase done: {len(saved)} new articles")
+            count = await run_extraction_pipeline(
+                db=db,
+                storage=storage,
+                date=date,
+                model=model,
+                concurrency=DEFAULT_EXTRACTION_CONCURRENCY,
+            )
+            return saved, count
+
+        saved, count = asyncio.run(_run())
+        log.success(f"Pipeline complete: {len(saved)} articles collected, {count} extracted")
+    finally:
+        if PIPELINE_LOCK_FILE.exists():
+            PIPELINE_LOCK_FILE.unlink()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -72,3 +72,10 @@ GITHUB_REPO_PATTERN: str = r"https?://(?:www\.)?github\.com/[a-zA-Z0-9_-]+/[a-zA
 # Names of the tables in the SQLite database
 SOURCES_TABLE_NAME: str = "blog_sources"
 ARTICLES_TABLE_NAME: str = "blog_articles"
+
+# -----------------------------------------------------------------------------
+# Pipeline Settings
+# -----------------------------------------------------------------------------
+# Path to the lock file that indicates a pipeline is running.
+# Deleting this file will cause the running pipeline to gracefully stop.
+PIPELINE_LOCK_FILE: Path = Path(".pipeline.lock")
