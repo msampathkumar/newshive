@@ -15,9 +15,8 @@ Two main orchestrators:
      - Run AI extraction (ContentProcessor)
      - Save to extracted_articles/YYYYMMDD/
 """
-import asyncio
-from datetime import datetime, timezone
-import json
+from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+from rich.console import Console
 
 from newshive.log import ColorLogger
 from newshive.storage import StorageManager
@@ -226,7 +225,6 @@ async def run_extraction_pipeline(
 ) -> int:
     """
     Run AI extraction for all articles with status 'downloaded'.
-
     Returns count of successfully extracted articles.
     """
     log.debug("→ run_extraction_pipeline start")
@@ -251,8 +249,24 @@ async def run_extraction_pipeline(
                 processor=processor,
             )
 
-    results = await asyncio.gather(*[_bounded(r) for r in pending])
-    success_count = sum(1 for r in results if r)
+    success_count = 0
+    with Progress(
+        TextColumn("[bold blue]{task.description}", justify="right"),
+        BarColumn(bar_width=None),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        "•",
+        TextColumn("[green]{task.completed} of {task.total} articles"),
+        "•",
+        TimeRemainingColumn(),
+        console=Console(),
+    ) as progress:
+        task = progress.add_task("[green]Summarizing articles...", total=len(pending))
+        futures = [_bounded(r) for r in pending]
+        for future in asyncio.as_completed(futures):
+            result = await future
+            if result:
+                success_count += 1
+            progress.update(task, advance=1)
 
     log.success(f"Extraction complete: {success_count}/{len(pending)} articles extracted")
     log.debug("← run_extraction_pipeline done")
