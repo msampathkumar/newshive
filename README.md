@@ -1,6 +1,6 @@
 # Newshive
 
-A **blog-index monitor pipeline** that tracks AI/ML blogs, detects new posts daily, and uses a local LLM to extract and summarize content — all from your terminal, no cloud APIs required.
+A **blog-index monitor pipeline** that tracks AI/ML blogs, detects new posts daily, and uses a pluggable LLM backend to extract and summarize content. It defaults to a local [Ollama](https://ollama.com) model, enabling powerful AI analysis on your machine without requiring cloud APIs.
 
 ```
 blog index page → delta URLs → download articles → AI extraction → Markdown summaries
@@ -12,7 +12,7 @@ blog index page → delta URLs → download articles → AI extraction → Markd
 
 - 🔍 **Smart delta detection** — compares today's blog index against yesterday's snapshot; only processes genuinely new posts
 - ⚡ **Parallel collection** — `asyncio.gather` fetches multiple sources and articles concurrently
-- 🧠 **Local AI extraction** — runs [Ollama](https://ollama.com) models on your machine (default: `gemma3:1b`). Extracts published date, title, and GitHub links.
+- 🧠 **Pluggable AI Backend** — defaults to local extraction with [Ollama](https://ollama.com) (`gemma3:1b`), but is designed to be extensible for other models or cloud-based LLM APIs.
 - 🎨 **Colored logging** — per-module ANSI colors, RED reserved for errors; toggle with `--no-color`
 - 🗃️ **SQLite index** — lightweight, portable, no server needed
 - 🧪 **39 tests** — full unit-test coverage of core logic
@@ -23,9 +23,11 @@ blog index page → delta URLs → download articles → AI extraction → Markd
 
 | Tool   | Version | Install                                            |
 | ------ | ------- | -------------------------------------------------- |
-| Python | ≥ 3.12  | [python.org](https://python.org)                   |
+| Python | ≥ 3.9   | [python.org](https://python.org)                   |
 | uv     | latest  | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Ollama | latest  | [ollama.com](https://ollama.com)                   |
+
+> **Note**: While Ollama is the default backend, the `ContentProcessor` can be extended to support other LLM providers like OpenAI, Anthropic, or any service accessible via an API.
 
 ```bash
 # Pull the default model
@@ -98,7 +100,7 @@ For each source URL:
 uv run newshive process [--date YYYYMMDD] [--model gemma3:1b] [--concurrency 3]
 ```
 
-Runs the local Ollama model on all downloaded articles and saves Markdown summaries to `data/extracted_articles/YYYYMMDD/`. Summaries are prepended with a metadata header including title, published date, and URL.
+Runs the configured LLM backend (defaulting to a local Ollama model) on all downloaded articles and saves Markdown summaries to `data/extracted_articles/YYYYMMDD/`. Summaries are prepended with a metadata header including title, published date, and URL.
 
 ### `run` — End-to-end
 
@@ -173,4 +175,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and [DESIGN.md](DES
 
 ## License
 
-MIT
+Apache 2.0
