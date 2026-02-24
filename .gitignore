@@ -8,6 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+.env
 
 # macOS
 .DS_Store
@@ -30,3 +31,17 @@ brain/*.db
 
 # Example script
 example.py
+
+# IDE configuration
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Linting and type-checking caches
+.ruff_cache/
+.mypy_cache/
+
+# Test and coverage reports
+.coverage
+htmlcov/
