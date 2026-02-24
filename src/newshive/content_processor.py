@@ -8,6 +8,11 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 from newshive.log import ColorLogger
+from newshive.config import (
+    DEFAULT_OLLAMA_MODEL,
+    LLM_SYSTEM_PROMPT,
+    GITHUB_REPO_PATTERN,
+)
 
 log = ColorLogger("content_processor")
 
@@ -15,7 +20,7 @@ log = ColorLogger("content_processor")
 class ContentProcessor:
     """Uses a local LLM via Ollama to summarize article text into Markdown."""
 
-    def __init__(self, model_name: str = "gemma3:1b"):
+    def __init__(self, model_name: str = DEFAULT_OLLAMA_MODEL):
         self.model_name = model_name
         log.debug(f"→ ContentProcessor init: model={model_name}")
 
@@ -77,11 +82,7 @@ class ContentProcessor:
         Looks for patterns like "github.com/user/repo".
         """
         log.debug(f"→ extract_github_links: text_length={len(text)}")
-        # Regex to find GitHub repository URLs
-        # It looks for github.com followed by an optional port, then username/repo name
-        github_pattern = r"https?://(?:www\.)?github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+"
-        
-        found_links = re.findall(github_pattern, text)
+        found_links = re.findall(GITHUB_REPO_PATTERN, text)
         # Remove duplicates by converting to set and back to list
         unique_links = list(set(found_links))
         
@@ -95,20 +96,10 @@ class ContentProcessor:
         """
         log.debug(f"→ summarize: text_length={len(text)}")
 
-        system_prompt = (
-            "You are an expert AI news summarizer for a highly technical audience. "
-            "Your readers are developers with 1 to 14 years of Software Development Experience. "
-            "They are especially fans of Google Cloud and Gemini. "
-            "Summarize the following text into clear, concise Markdown. "
-            "Extract the key takeaway, especially highlighting anything related to "
-            "Google Cloud, Vertex AI, Gemini, or general AI developer news. "
-            "Do NOT include conversational filler like 'Here is the summary'."
-        )
-
         response = ollama.chat(
             model=self.model_name,
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": LLM_SYSTEM_PROMPT},
                 {"role": "user",   "content": text},
             ]
         )

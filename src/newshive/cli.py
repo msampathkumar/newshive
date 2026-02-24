@@ -20,14 +20,19 @@ from datetime import datetime, timezone
 
 import click
 
-import newshive.log as log_module
 from newshive.log import ColorLogger, set_level, set_color, DEBUG, INFO
 from newshive.metadata_manager import MetadataManager
 from newshive.storage import StorageManager
 from newshive.task_orchestrator import run_collection_pipeline, run_extraction_pipeline
-
-DEFAULT_DB_PATH    = Path("brain/page_index.db")
-DEFAULT_DATA_DIR   = Path("data")
+from newshive.config import (
+    DEFAULT_DB_PATH,
+    DEFAULT_DATA_DIR,
+    MAX_LOOKBACK_DAYS,
+    DEFAULT_SOURCE_CONCURRENCY,
+    DEFAULT_ARTICLE_CONCURRENCY,
+    DEFAULT_OLLAMA_MODEL,
+    DEFAULT_EXTRACTION_CONCURRENCY,
+)
 
 # CLI-level logger
 log = ColorLogger("cli")
@@ -122,9 +127,9 @@ def source_remove(ctx, url):
 
 @cli.command("collect")
 @click.option("--date",         default=None,  help="Target date (YYYYMMDD). Defaults to today.")
-@click.option("--max-lookback", default=10,    show_default=True, help="Days to look back for prior snapshot.")
-@click.option("--source-concurrency", default=4, show_default=True, help="Max parallel source fetches.")
-@click.option("--article-concurrency", default=5, show_default=True, help="Max parallel article downloads.")
+@click.option("--max-lookback", default=MAX_LOOKBACK_DAYS, show_default=True, help="Days to look back for prior snapshot.")
+@click.option("--source-concurrency", default=DEFAULT_SOURCE_CONCURRENCY, show_default=True, help="Max parallel source fetches.")
+@click.option("--article-concurrency", default=DEFAULT_ARTICLE_CONCURRENCY, show_default=True, help="Max parallel article downloads.")
 @click.pass_context
 def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
     """
@@ -153,8 +158,8 @@ def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
 
 @cli.command("process")
 @click.option("--date",        default=None,         help="Target date (YYYYMMDD). Defaults to today.")
-@click.option("--model",       default="gemma3:1b",  show_default=True, help="Ollama model name.")
-@click.option("--concurrency", default=3,            show_default=True, help="Max parallel extractions.")
+@click.option("--model",       default=DEFAULT_OLLAMA_MODEL,  show_default=True, help="Ollama model name.")
+@click.option("--concurrency", default=DEFAULT_EXTRACTION_CONCURRENCY, show_default=True, help="Max parallel extractions.")
 @click.pass_context
 def process(ctx, date, model, concurrency):
     """
@@ -182,8 +187,8 @@ def process(ctx, date, model, concurrency):
 
 @cli.command("run")
 @click.option("--date",        default=None,         help="Target date (YYYYMMDD). Defaults to today.")
-@click.option("--model",       default="gemma3:1b",  show_default=True, help="Ollama model name.")
-@click.option("--max-lookback",default=10,           show_default=True, help="Days to look back for prior snapshot.")
+@click.option("--model",       default=DEFAULT_OLLAMA_MODEL,  show_default=True, help="Ollama model name.")
+@click.option("--max-lookback",default=MAX_LOOKBACK_DAYS, show_default=True, help="Days to look back for prior snapshot.")
 @click.pass_context
 def run_pipeline(ctx, date, model, max_lookback):
     """
@@ -196,11 +201,20 @@ def run_pipeline(ctx, date, model, max_lookback):
 
     async def _run():
         saved = await run_collection_pipeline(
-            db=db, storage=storage, date=date, max_lookback=max_lookback
+            db=db,
+            storage=storage,
+            date=date,
+            max_lookback=max_lookback,
+            source_concurrency=DEFAULT_SOURCE_CONCURRENCY,
+            article_concurrency=DEFAULT_ARTICLE_CONCURRENCY,
         )
         log.info(f"Collection phase done: {len(saved)} new articles")
         count = await run_extraction_pipeline(
-            db=db, storage=storage, date=date, model=model
+            db=db,
+            storage=storage,
+            date=date,
+            model=model,
+            concurrency=DEFAULT_EXTRACTION_CONCURRENCY,
         )
         return saved, count
 

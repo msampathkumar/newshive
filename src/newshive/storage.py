@@ -14,6 +14,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from newshive.log import ColorLogger
+from newshive.config import (
+    DEFAULT_DATA_DIR,
+    INDEX_HTML_DIR_NAME,
+    ARTICLE_HTML_DIR_NAME,
+    EXTRACTED_ARTICLES_DIR_NAME,
+    MAX_LOOKBACK_DAYS,
+)
 
 log = ColorLogger("storage")
 
@@ -44,11 +51,11 @@ def safe_filename(url: str) -> str:
 class StorageManager:
     """Manages the local file storage for the blog scraper pipeline."""
 
-    def __init__(self, base_dir: Path | str = "data"):
+    def __init__(self, base_dir: Path | str = DEFAULT_DATA_DIR):
         self.base_dir = Path(base_dir)
-        self.index_dir = self.base_dir / "blog_index_html"
-        self.article_dir = self.base_dir / "article_html"
-        self.extracted_dir = self.base_dir / "extracted_articles"
+        self.index_dir = self.base_dir / INDEX_HTML_DIR_NAME
+        self.article_dir = self.base_dir / ARTICLE_HTML_DIR_NAME
+        self.extracted_dir = self.base_dir / EXTRACTED_ARTICLES_DIR_NAME
         log.debug("→ StorageManager init: base_dir=%s", )
 
     def _ensure(self, path: Path) -> Path:
@@ -94,7 +101,7 @@ class StorageManager:
             log.debug(f"← seed_empty_index: baseline already exists, skipping")
         return path
 
-    def find_most_recent_index_date(self, url: str, max_lookback: int = 10) -> str | None:
+    def find_most_recent_index_date(self, url: str, max_lookback: int = MAX_LOOKBACK_DAYS) -> str | None:
         """
         Walk back from today-1 up to max_lookback days to find the most recent
         date folder that contains a saved index HTML for url.

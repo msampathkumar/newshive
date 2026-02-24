@@ -17,7 +17,7 @@ Two main orchestrators:
 """
 import asyncio
 from datetime import datetime, timezone
-import json # NEW
+import json
 
 from newshive.log import ColorLogger
 from newshive.storage import StorageManager
@@ -85,10 +85,10 @@ async def _collect_one_source(
 async def run_collection_pipeline(
     db: MetadataManager,
     storage: StorageManager,
-    date: str | None = None,
-    max_lookback: int = 10,
-    source_concurrency: int = 4,
-    article_concurrency: int = 5,
+    date: str,
+    max_lookback: int,
+    source_concurrency: int,
+    article_concurrency: int,
 ) -> list[str]:
     """
     Run the collection pipeline for all registered source URLs in parallel.
@@ -105,7 +105,6 @@ async def run_collection_pipeline(
     Returns list of all newly downloaded article URLs.
     """
     log.debug("→ run_collection_pipeline start")
-    date = date or _today()
     sources = db.get_blog_sources()
 
     if not sources:
@@ -143,13 +142,14 @@ async def run_collection_pipeline(
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def _extract_one_article(
-    url: str,
+    row: dict,
     date: str,
     storage: StorageManager,
     db: MetadataManager,
     processor: ContentProcessor,
 ) -> bool:
     """Run AI extraction for a single article."""
+    url = row["url"]
     log.debug(f"→ _extract_one_article: {url}")
 
     # Load saved article HTML
@@ -199,9 +199,9 @@ async def _extract_one_article(
 async def run_extraction_pipeline(
     db: MetadataManager,
     storage: StorageManager,
-    date: str | None = None,
-    model: str = "gemma3:1b",
-    concurrency: int = 3,
+    date: str,
+    model: str,
+    concurrency: int,
 ) -> int:
     """
     Run AI extraction for all articles with status 'downloaded'.
@@ -209,7 +209,6 @@ async def run_extraction_pipeline(
     Returns count of successfully extracted articles.
     """
     log.debug("→ run_extraction_pipeline start")
-    date = date or _today()
     pending = db.get_pending_extraction(date)
 
     if not pending:
@@ -224,7 +223,7 @@ async def run_extraction_pipeline(
     async def _bounded(row: dict) -> bool:
         async with sem:
             return await _extract_one_article(
-                url=row["url"],
+                row=row,
                 date=date,
                 storage=storage,
                 db=db,

@@ -18,8 +18,13 @@ import httpx
 from bs4 import BeautifulSoup
 
 from newshive.log import ColorLogger
-from newshive.storage import StorageManager, safe_filename
-from newshive.config import URL_IGNORE_PATTERNS, PAGE_TIMEOUT_SECONDS # NEW
+from newshive.storage import StorageManager
+from newshive.config import (
+    URL_IGNORE_PATTERNS,
+    PAGE_TIMEOUT_SECONDS,
+    MAX_LOOKBACK_DAYS,
+    DEFAULT_ARTICLE_CONCURRENCY,
+)
 
 log = ColorLogger("article_discoverer")
 
@@ -117,7 +122,7 @@ class ArticleDiscoverer:
         log.debug(f"← compute_delta: {len(delta)} new URLs")
         return delta
 
-    def get_prior_links(self, source_url: str, max_lookback: int = 10) -> set[str]:
+    def get_prior_links(self, source_url: str, max_lookback: int = MAX_LOOKBACK_DAYS) -> set[str]:
         """
         Find the most recent prior-day snapshot and extract its links.
         Returns empty set if no prior snapshot exists (e.g., first run).
@@ -190,7 +195,7 @@ class ArticleDiscoverer:
             return None
 
     async def download_articles_batch(
-        self, urls: list[str], date: str, concurrency: int = 5
+        self, urls: list[str], date: str, concurrency: int = DEFAULT_ARTICLE_CONCURRENCY
     ) -> dict[str, str | None]:
         """
         Download multiple articles in parallel using asyncio.gather,
@@ -217,7 +222,7 @@ class ArticleDiscoverer:
         source_url: str,
         date: str,
         registered_check,   # callable(url: str) -> bool
-        max_lookback: int = 10,
+        max_lookback: int = MAX_LOOKBACK_DAYS,
     ) -> list[str]:
         """
         Full pipeline for one source URL:
