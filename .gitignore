@@ -27,3 +27,6 @@ brain/*.db
 
 # pytest cache
 .pytest_cache/
+
+# Example script
+example.py
