@@ -1,4 +1,4 @@
-# AI News Summarizer
+# NewsHive
 
 A **blog-index monitor pipeline** that tracks AI/ML blogs, detects new posts daily, and uses a local LLM to extract and summarize content — all from your terminal, no cloud APIs required.
 
@@ -37,8 +37,8 @@ ollama pull gemma3:1b
 ## Installation
 
 ```bash
-git clone https://github.com/youruser/ai-news-summarizer
-cd ai-news-summarizer
+git clone https://github.com/youruser/newshive
+cd newshive
 uv sync
 ```
 
@@ -48,18 +48,18 @@ uv sync
 
 ```bash
 # 1. Add blog index URLs to monitor
-uv run ai-news-summarizer source add https://huggingface.co/blog
-uv run ai-news-summarizer source add https://lilianweng.github.io/
-uv run ai-news-summarizer source add https://karpathy.ai/
+uv run newshive source add https://huggingface.co/blog
+uv run newshive source add https://lilianweng.github.io/
+uv run newshive source add https://karpathy.ai/
 
 # 2. Collect new articles (fetch index → delta → download)
-uv run ai-news-summarizer collect
+uv run newshive collect
 
 # 3. Extract & summarize downloaded articles
-uv run ai-news-summarizer process
+uv run newshive process
 
 # 4. Or run both steps at once
-uv run ai-news-summarizer run
+uv run newshive run
 ```
 
 ---
@@ -69,9 +69,9 @@ uv run ai-news-summarizer run
 ### `source` — Manage monitored blogs
 
 ```bash
-uv run ai-news-summarizer source add <url> [--label "Name"]
-uv run ai-news-summarizer source list
-uv run ai-news-summarizer source remove <url>
+uv run newshive source add <url> [--label "Name"]
+uv run newshive source list
+uv run newshive source remove <url>
 ```
 
 > **Note:** `source add` automatically creates an empty prior-day snapshot so your first `collect` always has a baseline to diff against.
@@ -79,7 +79,7 @@ uv run ai-news-summarizer source remove <url>
 ### `collect` — Fetch & download new articles
 
 ```bash
-uv run ai-news-summarizer collect [--date YYYYMMDD] [--max-lookback 10] \
+uv run newshive collect [--date YYYYMMDD] [--max-lookback 10] \
   [--source-concurrency 4] [--article-concurrency 5]
 ```
 
@@ -95,7 +95,7 @@ For each source URL:
 ### `process` — AI extraction
 
 ```bash
-uv run ai-news-summarizer process [--date YYYYMMDD] [--model gemma3:1b] [--concurrency 3]
+uv run newshive process [--date YYYYMMDD] [--model gemma3:1b] [--concurrency 3]
 ```
 
 Runs the local Ollama model on all downloaded articles and saves Markdown summaries to `data/extracted_articles/YYYYMMDD/`.
@@ -103,7 +103,7 @@ Runs the local Ollama model on all downloaded articles and saves Markdown summar
 ### `run` — End-to-end
 
 ```bash
-uv run ai-news-summarizer run [--date YYYYMMDD] [--model gemma3:1b] [--max-lookback 10]
+uv run newshive run [--date YYYYMMDD] [--model gemma3:1b] [--max-lookback 10]
 ```
 
 ### Global Flags
@@ -156,10 +156,10 @@ brain/
 uv run pytest -v
 
 # Run with debug logging
-uv run ai-news-summarizer --debug run
+uv run newshive --debug run
 
 # Run with no color (CI-friendly)
-NO_COLOR=1 uv run ai-news-summarizer run
+NO_COLOR=1 uv run newshive run
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and [DESIGN.md](DESIGN.md) for architecture decisions.

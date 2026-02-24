@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner
 from unittest.mock import patch, AsyncMock, MagicMock
 
-from ai_news_summarizer.cli import cli
+from newshive.cli import cli
 
 
 @pytest.fixture

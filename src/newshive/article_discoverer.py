@@ -1,5 +1,5 @@
 """
-BlogCrawler — fetches blog index pages, extracts article links, computes
+ArticleDiscoverer — fetches blog index pages, extracts article links, computes
 deltas against the prior day's saved snapshot, and downloads new articles.
 
 Flow per source URL:
@@ -16,10 +16,10 @@ from urllib.parse import urljoin, urlparse, urldefrag
 import httpx
 from bs4 import BeautifulSoup
 
-from ai_news_summarizer.log import ColorLogger
-from ai_news_summarizer.storage import StorageManager, safe_filename
+from newshive.log import ColorLogger
+from newshive.storage import StorageManager, safe_filename
 
-log = ColorLogger("crawler")
+log = ColorLogger("article_discoverer")
 
 _HEADERS = {
     "User-Agent": (
@@ -30,7 +30,7 @@ _HEADERS = {
 }
 
 
-class BlogCrawler:
+class ArticleDiscoverer:
     """
     Responsible for:
     - Fetching blog index pages and saving snapshots
@@ -43,7 +43,7 @@ class BlogCrawler:
     def __init__(self, storage: StorageManager, timeout: int = 20):
         self.storage = storage
         self.timeout = timeout
-        log.debug("→ BlogCrawler init")
+        log.debug("→ ArticleDiscoverer init")
 
     # ── Fetch & Save Index ────────────────────────────────────────────────────
 

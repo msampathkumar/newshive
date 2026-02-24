@@ -1,4 +1,4 @@
-# Design Document — AI News Summarizer
+# Design Document — NewsHive
 
 > Architecture reference for developers. Explains *why* the system is built the way it is, not just *what* it does.
 
@@ -15,27 +15,27 @@ Most AI news aggregators rely on RSS feeds or third-party APIs. This project tak
 ```mermaid
 graph TD
     CLI["CLI (cli.py)"]
-    CLI --> Pipeline["Pipeline (pipeline.py)"]
-    Pipeline -->|asyncio.gather| Crawler["BlogCrawler (crawler.py)"]
-    Pipeline -->|asyncio.gather| Summarizer["Summarizer (summarizer.py)"]
-    Crawler --> Storage["StorageManager (storage.py)"]
-    Crawler --> DB["DataManager (database.py)"]
-    Summarizer --> Storage
-    Summarizer --> DB
+    CLI --> TaskOrchestrator["TaskOrchestrator (task_orchestrator.py)"]
+    TaskOrchestrator -->|asyncio.gather| ArticleDiscoverer["ArticleDiscoverer (article_discoverer.py)"]
+    TaskOrchestrator -->|asyncio.gather| ContentProcessor["ContentProcessor (content_processor.py)"]
+    ArticleDiscoverer --> Storage["StorageManager (storage.py)"]
+    ArticleDiscoverer --> DB["MetadataManager (metadata_manager.py)"]
+    ContentProcessor --> Storage
+    ContentProcessor --> DB
     All["All modules"] --> Log["ColorLogger (log.py)"]
 ```
 
 ### Module Responsibilities
 
-| Module          | Single Responsibility                          |
-| --------------- | ---------------------------------------------- |
-| `log.py`        | ANSI-colored structured logging; nothing else  |
-| `storage.py`    | All file I/O; no business logic                |
-| `database.py`   | SQLite read/write; no business logic           |
-| `crawler.py`    | HTTP + HTML parsing + delta + domain filter    |
-| `pipeline.py`   | Orchestration only; delegates to other modules |
-| `summarizer.py` | LLM call only; no file I/O                     |
-| `cli.py`        | User interface only; no business logic         |
+| Module                       | Single Responsibility                          |
+| ---------------------------- | ---------------------------------------------- |
+| `log.py`                     | ANSI-colored structured logging; nothing else  |
+| `storage.py`                 | All file I/O; no business logic                |
+| `metadata_manager.py`        | SQLite read/write; no business logic           |
+| `article_discoverer.py`      | HTTP + HTML parsing + delta + domain filter    |
+| `task_orchestrator.py`       | Orchestration only; delegates to other modules |
+| `content_processor.py`       | LLM call only; no file I/O                     |
+| `cli.py`                     | User interface only; no business logic         |
 
 ---
 
@@ -58,7 +58,7 @@ This approach requires **no database diff, no external state**, and works even i
 
 ```mermaid
 sequenceDiagram
-    participant C as BlogCrawler
+    participant C as ArticleDiscoverer
     participant S as StorageManager
     C->>S: fetch_index_page(url, today)
     S-->>C: raw HTML
@@ -154,14 +154,14 @@ data/blog_index_html/
 
 Each module has a dedicated ANSI color for its log prefix. This makes multi-module output easy to trace in `--debug` mode without a log aggregator. RED is strictly reserved for warnings and errors.
 
-| Module       | Color   | Why                                 |
-| ------------ | ------- | ----------------------------------- |
-| `crawler`    | Cyan    | Dominant output during collection   |
-| `storage`    | Blue    | Secondary, file I/O confirmations   |
-| `database`   | Magenta | Distinct from storage; often paired |
-| `pipeline`   | Green   | Progress/success visibility         |
-| `summarizer` | Yellow  | Warm; long-running AI work          |
-| Errors       | Red     | Immediate visual attention          |
+| Module               | Color   | Why                                 |
+| -------------------- | ------- | ----------------------------------- |
+| `article_discoverer` | Cyan    | Dominant output during collection   |
+| `storage`            | Blue    | Secondary, file I/O confirmations   |
+| `metadata_manager`   | Magenta | Distinct from storage; often paired |
+| `task_orchestrator`  | Green   | Progress/success visibility         |
+| `content_processor`  | Yellow  | Warm; long-running AI work          |
+| Errors               | Red     | Immediate visual attention          |
 
 Color output is disabled by setting `NO_COLOR=1` or passing `--no-color` to any command.
 
@@ -173,13 +173,13 @@ Color output is disabled by setting `NO_COLOR=1` or passing `--no-color` to any 
 sequenceDiagram
     participant U as User / Scheduler
     participant CLI
-    participant P as Pipeline
-    participant C as BlogCrawler
+    participant P as TaskOrchestrator
+    participant C as ArticleDiscoverer
     participant S as StorageManager
-    participant DB as DataManager
-    participant LLM as Summarizer (Ollama)
+    participant DB as MetadataManager
+    participant LLM as ContentProcessor (Ollama)
 
-    U->>CLI: ai-news-summarizer run
+    U->>CLI: newshive run
     CLI->>P: run_collection_pipeline(sources, date)
     loop For each source (parallel)
         P->>C: collect_source(url, date)
@@ -209,18 +209,18 @@ sequenceDiagram
 No code changes needed — just `source add <url>`. The domain filtering is automatic.
 
 ### Use a different LLM
-Pass `--model <ollama-model-name>` at runtime. The `Summarizer` class is model-agnostic.
+Pass `--model <ollama-model-name>` at runtime. The `ContentProcessor` class is model-agnostic.
 
 ### Change the extraction prompt
-Edit `Summarizer.summarize()` in `summarizer.py`. The system prompt is in one place.
+Edit `ContentProcessor.summarize()` in `content_processor.py`. The system prompt is in one place.
 
 ### Add a new output format
-Add a new method to `StorageManager` (e.g. `save_json_article`) and call it from `pipeline.py`. No other changes required.
+Add a new method to `StorageManager` (e.g. `save_json_article`) and call it from `task_orchestrator.py`. No other changes required.
 
 ### Schedule daily runs
 ```bash
 # crontab -e
-0 7 * * * cd /path/to/ai-news-summarizer && uv run ai-news-summarizer run --no-color >> logs/daily.log 2>&1
+0 7 * * * cd /path/to/newshive && uv run newshive run --no-color >> logs/daily.log 2>&1
 ```
 
 ---
@@ -229,18 +229,18 @@ Add a new method to `StorageManager` (e.g. `save_json_article`) and call it from
 
 - **Unit tests only** for core logic (no network in tests)
 - `StorageManager` is tested against a real `tmp_path` filesystem
-- `DatabaseManager` is tested against a real in-memory SQLite file in `tmp_path`
-- `BlogCrawler` uses `MagicMock` for `StorageManager` and `respx` for HTTP
+- `MetadataManager` is tested against a real in-memory SQLite file in `tmp_path`
+- `ArticleDiscoverer` uses `MagicMock` for `StorageManager` and `respx` for HTTP
 - No test should depend on external services (Ollama, internet)
 
 ```
 tests/
-├── test_crawler.py    ← link extraction, delta, domain filter, fallback
-├── test_storage.py    ← all folder types, seed, lookback
-├── test_database.py   ← CRUD for both tables, statuses
-├── test_scraper.py    ← legacy (kept for compatibility)
-├── test_cli.py        ← Click command smoke tests
-└── test_summarizer.py ← mocked Ollama
+├── test_article_discoverer.py    ← link extraction, delta, domain filter, fallback
+├── test_storage.py               ← all folder types, seed, lookback
+├── test_metadata_manager.py      ← CRUD for both tables, statuses
+├── test_scraper.py               ← legacy (kept for compatibility)
+├── test_cli.py                   ← Click command smoke tests
+└── test_content_processor.py     ← mocked Ollama
 ```
 
 ---

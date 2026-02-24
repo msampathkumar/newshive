@@ -1,5 +1,5 @@
 """
-StorageManager — manages all local file storage for AI News Summarizer.
+StorageManager — manages all local file storage for News Hive.
 
 Folder layout (all under data/):
   blog_index_html/YYYYMMDD/<safe>.html  — daily snapshots of blog index pages
@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from ai_news_summarizer.log import ColorLogger
+from newshive.log import ColorLogger
 
 log = ColorLogger("storage")
 

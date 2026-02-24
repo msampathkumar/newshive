@@ -1,19 +1,19 @@
 """
-Summarizer — uses a local LLM via Ollama to extract and summarize article text.
+ContentProcessor — uses a local LLM via Ollama to extract and summarize article text for News Hive.
 """
 import ollama
 
-from ai_news_summarizer.log import ColorLogger
+from newshive.log import ColorLogger
 
-log = ColorLogger("summarizer")
+log = ColorLogger("content_processor")
 
 
-class Summarizer:
+class ContentProcessor:
     """Uses a local LLM via Ollama to summarize article text into Markdown."""
 
     def __init__(self, model_name: str = "gemma3:1b"):
         self.model_name = model_name
-        log.debug(f"→ Summarizer init: model={model_name}")
+        log.debug(f"→ ContentProcessor init: model={model_name}")
 
     def summarize(self, text: str) -> str:
         """

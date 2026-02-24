@@ -5,7 +5,7 @@ seed_empty_index, and find_most_recent_index_date fallback logic.
 import pytest
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from ai_news_summarizer.storage import StorageManager, safe_filename
+from newshive.storage import StorageManager, safe_filename
 
 
 def _fmt(d: datetime) -> str:

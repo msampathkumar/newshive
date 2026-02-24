@@ -1,7 +1,7 @@
 import pytest
 import respx
 import httpx
-from ai_news_summarizer.scraper import Scraper, ProductLinkDetectedError
+from newshive.scraper import Scraper, ProductLinkDetectedError
 
 @pytest.fixture
 def mock_html():

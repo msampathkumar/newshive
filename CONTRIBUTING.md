@@ -1,4 +1,4 @@
-# Contributing to AI News Summarizer
+# Contributing to NewsHive
 
 Thanks for your interest in contributing! This is a clean, modular Python project and new contributions are very welcome.
 
@@ -9,8 +9,8 @@ Thanks for your interest in contributing! This is a clean, modular Python projec
 ### 1. Clone & set up
 
 ```bash
-git clone https://github.com/youruser/ai-news-summarizer
-cd ai-news-summarizer
+git clone https://github.com/youruser/newshive
+cd newshive
 uv sync          # installs all deps including dev extras
 ```
 
@@ -29,13 +29,13 @@ All 39 tests should pass before you start making changes.
 ollama pull gemma3:1b
 
 # Add a test source
-uv run ai-news-summarizer source add https://huggingface.co/blog --label "HuggingFace Blog"
+uv run newshive source add https://huggingface.co/blog --label "HuggingFace Blog"
 
 # Collect new articles
-uv run ai-news-summarizer collect --debug
+uv run newshive collect --debug
 
 # Summarize
-uv run ai-news-summarizer process --debug
+uv run newshive process --debug
 ```
 
 ---
@@ -43,19 +43,19 @@ uv run ai-news-summarizer process --debug
 ## Project Structure
 
 ```
-src/ai_news_summarizer/
-├── log.py          ← Colored logging (start here to understand output)
-├── storage.py      ← All file I/O (blog_index_html/, article_html/, extracted_articles/)
-├── database.py     ← SQLite layer (blog_sources, blog_articles)
-├── crawler.py      ← BlogCrawler: fetch, extract, delta, filter, download
-├── pipeline.py     ← asyncio.gather orchestration
-├── summarizer.py   ← Ollama LLM wrapper
-└── cli.py          ← Click commands (source/collect/process/run)
+src/news_hive/
+├── log.py                   ← Colored logging (start here to understand output)
+├── storage.py               ← All file I/O (blog_index_html/, article_html/, extracted_articles/)
+├── metadata_manager.py      ← SQLite layer (blog_sources, blog_articles)
+├── article_discoverer.py    ← ArticleDiscoverer: fetch, extract, delta, filter, download
+├── task_orchestrator.py     ← asyncio.gather orchestration
+├── content_processor.py     ← Ollama LLM wrapper
+└── cli.py                   ← Click commands (source/collect/process/run)
 
 tests/
-├── test_crawler.py   ← 12 tests
-├── test_storage.py   ← 16 tests
-└── test_database.py  ← 11 tests
+├── test_article_discoverer.py   ← 12 tests
+├── test_storage.py              ← 16 tests
+└── test_metadata_manager.py     ← 11 tests
 ```
 
 ---
@@ -74,7 +74,7 @@ tests/
 Use `ColorLogger` from `log.py`, not `print()` or the stdlib `logging` module directly.
 
 ```python
-from ai_news_summarizer.log import ColorLogger
+from news_hive.log import ColorLogger
 log = ColorLogger("my_module")   # pick a module color from MODULE_COLORS or add one
 
 log.debug("→ my_function start: param=...")   # called at start of every function
@@ -107,14 +107,14 @@ uv run pytest -v -s
 
 Just use the CLI:
 ```bash
-uv run ai-news-summarizer source add https://newblog.com/posts
+uv run newshive source add https://newblog.com/posts
 ```
 
 ### Adding a New Ollama Model
 
 Pass `--model` at runtime:
 ```bash
-uv run ai-news-summarizer process --model llama3.2:3b
+uv run newshive process --model llama3.2:3b
 ```
 
 ---
@@ -127,7 +127,7 @@ uv run ai-news-summarizer process --model llama3.2:3b
 - [ ] Tests added/updated for changed logic
 - [ ] `uv run pytest -v` passes (all green)
 - [ ] No secrets or personal data in code or test fixtures
-- [ ] `uv run ai-news-summarizer --help` still works correctly
+- [ ] `uv run newshive --help` still works correctly
 
 ---
 

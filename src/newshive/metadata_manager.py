@@ -1,5 +1,5 @@
 """
-DataManager — SQLite database layer for AI News Summarizer.
+MetadataManager — SQLite database layer for News Hive.
 
 Tables:
   blog_sources   — the blog index pages to monitor (seed URLs)
@@ -12,9 +12,9 @@ import sqlite_utils
 from pathlib import Path
 from datetime import datetime, timezone
 
-from ai_news_summarizer.log import ColorLogger
+from newshive.log import ColorLogger
 
-log = ColorLogger("database")
+log = ColorLogger("metadata_manager")
 
 # Article statuses
 STATUS_DOWNLOADED  = "downloaded"
@@ -24,14 +24,14 @@ STATUS_ERROR_LLM   = "error_llm"
 STATUS_SKIPPED     = "skipped"
 
 
-class DataManager:
-    """Manages the SQLite database index for the AI News Summarizer pipeline."""
+class MetadataManager:
+    """Manages the SQLite database index for the News Hive pipeline."""
 
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
-        log.debug(f"→ DataManager init: db_path={self.db_path}")
+        log.debug(f"→ MetadataManager init: db_path={self.db_path}")
         self._init_db()
-        log.debug("← DataManager init done")
+        log.debug("← MetadataManager init done")
 
     # ── Schema ───────────────────────────────────────────────────────────────
 

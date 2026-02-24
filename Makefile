@@ -17,7 +17,7 @@ install:
 	uv tool install . --force
 
 uninstall:
-	uv tool uninstall news-hive
+	uv tool uninstall newshive
 
 test:
 	uv run pytest
@@ -37,16 +37,16 @@ setup:
 	uv run news-hive setup
 
 gemini-install:
-	@mkdir -p ~/.gemini/skills/news-hive
-	@cp -r agents/skills/gemini/* ~/.gemini/skills/news-hive/
-	@echo "✨ NewsHive skill installed to ~/.gemini/skills/news-hive/"
+	@mkdir -p ~/.gemini/skills/newshive
+	@cp -r agents/skills/gemini/* ~/.gemini/skills/newshive/
+	@echo "✨ Newshive skill installed to ~/.gemini/skills/newshive/"
 
 gemini-uninstall:
-	@rm -rf ~/.gemini/skills/news-hive
-	@echo "🗑️ NewsHive skill removed from ~/.gemini/skills/news-hive/"
+	@rm -rf ~/.gemini/skills/newshive
+	@echo "🗑️ Newshive skill removed from ~/.gemini/skills/newshive/"
 
 agent-onboard:
-	@echo "🤖 [bold cyan]Agent Onboarding: news-hive[/bold cyan]"
+	@echo "🤖 [bold cyan]Agent Onboarding: newshive[/bold cyan]"
 	@echo "--------------------------------------------------"
 	@echo "Welcome, Agent. This is a template for onboarding."
 	@echo ""
@@ -55,8 +55,8 @@ agent-onboard:
 	@echo "   - Organizes and tracks metadata for discovered articles."
 	@echo ""
 	@echo "2. Your Interface:"
-	@echo "   - Primary Command: 'news-hive run <text>'"
-	@echo "   - File Input: 'news-hive run --file <path>'"
+	@echo "   - Primary Command: 'newshive run <text>'"
+	@echo "   - File Input: 'newshive run --file <path>'"
 	@echo ""
 	@echo "3. Integration:"
 	@echo "   - Your skill definition is located in 'agents/skills/gemini/SKILL.md'."

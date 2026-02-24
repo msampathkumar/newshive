@@ -1,7 +1,7 @@
 """
-Pipeline — asyncio orchestration for the AI News Summarizer.
+TaskOrchestrator — asyncio orchestration for the AI News Summarizer.
 
-Two main pipelines:
+Two main orchestrators:
 
 1. run_collection_pipeline()
    For each source URL (in parallel):
@@ -12,19 +12,19 @@ Two main pipelines:
 
 2. run_extraction_pipeline()
    For each downloaded article (in parallel):
-     - Run AI extraction (Summarizer)
+     - Run AI extraction (ContentProcessor)
      - Save to extracted_articles/YYYYMMDD/
 """
 import asyncio
 from datetime import datetime, timezone
 
-from ai_news_summarizer.log import ColorLogger
-from ai_news_summarizer.storage import StorageManager
-from ai_news_summarizer.database import DataManager, STATUS_DOWNLOADED, STATUS_EXTRACTED, STATUS_ERROR_FETCH, STATUS_ERROR_LLM
-from ai_news_summarizer.crawler import BlogCrawler
-from ai_news_summarizer.summarizer import Summarizer
+from newshive.log import ColorLogger
+from newshive.storage import StorageManager
+from newshive.metadata_manager import MetadataManager, STATUS_DOWNLOADED, STATUS_EXTRACTED, STATUS_ERROR_FETCH, STATUS_ERROR_LLM
+from newshive.article_discoverer import ArticleDiscoverer
+from newshive.content_processor import ContentProcessor
 
-log = ColorLogger("pipeline")
+log = ColorLogger("task_orchestrator")
 
 
 def _today() -> str:
@@ -38,8 +38,8 @@ def _today() -> str:
 async def _collect_one_source(
     source_url: str,
     date: str,
-    crawler: BlogCrawler,
-    db: DataManager,
+    discoverer: ArticleDiscoverer,
+    db: MetadataManager,
     storage: StorageManager,
     max_lookback: int,
     article_concurrency: int,
@@ -48,7 +48,7 @@ async def _collect_one_source(
     log.debug(f"→ _collect_one_source: {source_url}")
 
     # Step 1-5: Discover new article URLs
-    new_article_urls = await crawler.collect_source(
+    new_article_urls = await discoverer.collect_source(
         source_url=source_url,
         date=date,
         registered_check=db.is_article_registered,
@@ -61,7 +61,7 @@ async def _collect_one_source(
 
     # Step 6: Download articles in parallel (bounded)
     log.info(f"Downloading {len(new_article_urls)} new articles from {source_url} ...")
-    download_results = await crawler.download_articles_batch(
+    download_results = await discoverer.download_articles_batch(
         new_article_urls, date, concurrency=article_concurrency
     )
 
@@ -82,7 +82,7 @@ async def _collect_one_source(
 
 
 async def run_collection_pipeline(
-    db: DataManager,
+    db: MetadataManager,
     storage: StorageManager,
     date: str | None = None,
     max_lookback: int = 10,
@@ -108,11 +108,11 @@ async def run_collection_pipeline(
     sources = db.get_blog_sources()
 
     if not sources:
-        log.warning("No blog sources registered. Use: ai-news-summarizer source add <url>")
+        log.warning("No blog sources registered. Use: newshive source add <url>")
         return []
 
     log.info(f"Collection pipeline: {len(sources)} sources, date={date}")
-    crawler = BlogCrawler(storage)
+    discoverer = ArticleDiscoverer(storage)
 
     # Run all sources in parallel (bounded by semaphore)
     sem = asyncio.Semaphore(source_concurrency)
@@ -122,7 +122,7 @@ async def run_collection_pipeline(
             return await _collect_one_source(
                 source_url=source["url"],
                 date=date,
-                crawler=crawler,
+                discoverer=discoverer,
                 db=db,
                 storage=storage,
                 max_lookback=max_lookback,
@@ -145,8 +145,8 @@ async def _extract_one_article(
     url: str,
     date: str,
     storage: StorageManager,
-    db: DataManager,
-    summarizer: Summarizer,
+    db: MetadataManager,
+    processor: ContentProcessor,
 ) -> bool:
     """Run AI extraction for a single article."""
     log.debug(f"→ _extract_one_article: {url}")
@@ -169,7 +169,7 @@ async def _extract_one_article(
     # Run AI summarization (run sync in executor to not block event loop)
     loop = asyncio.get_event_loop()
     try:
-        summary = await loop.run_in_executor(None, summarizer.summarize, text)
+        summary = await loop.run_in_executor(None, processor.summarize, text)
     except Exception as e:
         log.error(f"AI extraction failed for {url}: {e}")
         db.update_article_status(url, STATUS_ERROR_LLM)
@@ -183,7 +183,7 @@ async def _extract_one_article(
 
 
 async def run_extraction_pipeline(
-    db: DataManager,
+    db: MetadataManager,
     storage: StorageManager,
     date: str | None = None,
     model: str = "gemma3:1b",
@@ -203,7 +203,7 @@ async def run_extraction_pipeline(
         return 0
 
     log.info(f"Extraction pipeline: {len(pending)} articles, model={model}, date={date}")
-    summarizer = Summarizer(model_name=model)
+    processor = ContentProcessor(model_name=model)
 
     sem = asyncio.Semaphore(concurrency)
 
@@ -214,7 +214,7 @@ async def run_extraction_pipeline(
                 date=date,
                 storage=storage,
                 db=db,
-                summarizer=summarizer,
+                processor=processor,
             )
 
     results = await asyncio.gather(*[_bounded(r) for r in pending])

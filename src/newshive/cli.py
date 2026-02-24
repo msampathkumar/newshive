@@ -1,5 +1,5 @@
 """
-CLI entry point for AI News Summarizer.
+CLI entry point for News Hive.
 
 Commands:
   source add <url>              Add a blog index URL to monitor (auto-seeds prior-day HTML)
@@ -20,11 +20,11 @@ from datetime import datetime, timezone
 
 import click
 
-import ai_news_summarizer.log as log_module
-from ai_news_summarizer.log import ColorLogger, set_level, set_color, DEBUG, INFO
-from ai_news_summarizer.database import DataManager
-from ai_news_summarizer.storage import StorageManager
-from ai_news_summarizer.pipeline import run_collection_pipeline, run_extraction_pipeline
+import newshive.log as log_module
+from newshive.log import ColorLogger, set_level, set_color, DEBUG, INFO
+from newshive.metadata_manager import MetadataManager
+from newshive.storage import StorageManager
+from newshive.task_orchestrator import run_collection_pipeline, run_extraction_pipeline
 
 DEFAULT_DB_PATH    = Path("brain/page_index.db")
 DEFAULT_DATA_DIR   = Path("data")
@@ -48,7 +48,7 @@ def _today() -> str:
 @click.option("--data-dir", type=click.Path(path_type=Path), default=DEFAULT_DATA_DIR, show_default=True)
 @click.pass_context
 def cli(ctx, no_color, debug, db_path, data_dir):
-    """AI News Summarizer — Blog Monitor Pipeline"""
+    """News Hive — Blog Monitor Pipeline"""
     set_color(not no_color)
     set_level(DEBUG if debug else INFO)
 
@@ -74,7 +74,7 @@ def source():
 def source_add(ctx, url, label):
     """Add a blog index URL. Auto-seeds a prior-day empty HTML baseline."""
     log.debug("→ source add start")
-    db      = DataManager(ctx.obj["db_path"])
+    db      = MetadataManager(ctx.obj["db_path"])
     storage = StorageManager(ctx.obj["data_dir"])
 
     added = db.add_blog_source(url, label=label)
@@ -93,7 +93,7 @@ def source_add(ctx, url, label):
 @click.pass_context
 def source_list(ctx):
     """List all monitored blog index URLs."""
-    db = DataManager(ctx.obj["db_path"])
+    db = MetadataManager(ctx.obj["db_path"])
     sources = db.get_blog_sources()
     if not sources:
         log.info("No sources registered yet. Use: source add <url>")
@@ -108,7 +108,7 @@ def source_list(ctx):
 @click.pass_context
 def source_remove(ctx, url):
     """Remove a blog index URL from monitoring."""
-    db = DataManager(ctx.obj["db_path"])
+    db = MetadataManager(ctx.obj["db_path"])
     removed = db.remove_blog_source(url)
     if removed:
         log.success(f"Removed source: {url}")
@@ -133,7 +133,7 @@ def collect(ctx, date, max_lookback, source_concurrency, article_concurrency):
     """
     date = date or _today()
     log.info(f"Starting collection for date={date}")
-    db      = DataManager(ctx.obj["db_path"])
+    db      = MetadataManager(ctx.obj["db_path"])
     storage = StorageManager(ctx.obj["data_dir"])
 
     saved = asyncio.run(run_collection_pipeline(
@@ -163,7 +163,7 @@ def process(ctx, date, model, concurrency):
     """
     date = date or _today()
     log.info(f"Starting extraction for date={date}, model={model}")
-    db      = DataManager(ctx.obj["db_path"])
+    db      = MetadataManager(ctx.obj["db_path"])
     storage = StorageManager(ctx.obj["data_dir"])
 
     count = asyncio.run(run_extraction_pipeline(
@@ -191,7 +191,7 @@ def run_pipeline(ctx, date, model, max_lookback):
     """
     date = date or _today()
     log.info(f"Starting end-to-end pipeline for date={date}")
-    db      = DataManager(ctx.obj["db_path"])
+    db      = MetadataManager(ctx.obj["db_path"])
     storage = StorageManager(ctx.obj["data_dir"])
 
     async def _run():

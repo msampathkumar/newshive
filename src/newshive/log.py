@@ -1,5 +1,5 @@
 """
-Centralized colored logging for AI News Summarizer.
+Centralized colored logging for News Hive.
 
 Each module gets a distinct color. RED is reserved for warnings and errors only.
 Colors can be disabled globally via the NO_COLOR=1 env var or by passing use_color=False.
@@ -23,12 +23,12 @@ _COLORS = {
 
 # Per-module color assignments
 MODULE_COLORS: dict[str, str] = {
-    "crawler":   "cyan",
-    "storage":   "blue",
-    "database":  "magenta",
-    "pipeline":  "green",
-    "summarizer":"yellow",
-    "cli":       "cyan",
+    "article_discoverer": "cyan",
+    "storage":            "blue",
+    "metadata_manager":   "magenta",
+    "task_orchestrator":  "green",
+    "content_processor":  "yellow",
+    "cli":                "cyan",
 }
 
 # Log levels
@@ -73,7 +73,7 @@ class ColorLogger:
     Lightweight colored logger tied to a named module.
 
     Usage:
-        from ai_news_summarizer.log import ColorLogger
+        from newshive.log import ColorLogger
         log = ColorLogger("crawler")
         log.info("Fetching index page")
         log.debug("→ enter fetch_index_page(url='https://...')")
