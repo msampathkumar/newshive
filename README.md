@@ -1,4 +1,4 @@
-# NewsHive
+# Newshive
 
 A **blog-index monitor pipeline** that tracks AI/ML blogs, detects new posts daily, and uses a local LLM to extract and summarize content — all from your terminal, no cloud APIs required.
 
@@ -12,7 +12,7 @@ blog index page → delta URLs → download articles → AI extraction → Markd
 
 - 🔍 **Smart delta detection** — compares today's blog index against yesterday's snapshot; only processes genuinely new posts
 - ⚡ **Parallel collection** — `asyncio.gather` fetches multiple sources and articles concurrently
-- 🧠 **Local AI extraction** — runs [Ollama](https://ollama.com) models on your machine (default: `gemma3:1b`)
+- 🧠 **Local AI extraction** — runs [Ollama](https://ollama.com) models on your machine (default: `gemma3:1b`). Extracts published date, title, and GitHub links.
 - 🎨 **Colored logging** — per-module ANSI colors, RED reserved for errors; toggle with `--no-color`
 - 🗃️ **SQLite index** — lightweight, portable, no server needed
 - 🧪 **39 tests** — full unit-test coverage of core logic
@@ -98,7 +98,7 @@ For each source URL:
 uv run newshive process [--date YYYYMMDD] [--model gemma3:1b] [--concurrency 3]
 ```
 
-Runs the local Ollama model on all downloaded articles and saves Markdown summaries to `data/extracted_articles/YYYYMMDD/`.
+Runs the local Ollama model on all downloaded articles and saves Markdown summaries to `data/extracted_articles/YYYYMMDD/`. Summaries are prepended with a metadata header including title, published date, and URL.
 
 ### `run` — End-to-end
 
@@ -141,6 +141,8 @@ brain/
 
 | Option                  | Default     | Description                              |
 | ----------------------- | ----------- | ---------------------------------------- |
+| `PAGE_TIMEOUT_SECONDS`    | `120`       | Timeout for downloading individual articles (seconds)    |
+| `URL_IGNORE_PATTERNS`   | `["*.xml$"]`| Regex patterns for URLs to ignore during collection      |
 | `--model`               | `gemma3:1b` | Any Ollama model name                    |
 | `--max-lookback`        | `10`        | Days to search back for a prior snapshot |
 | `--source-concurrency`  | `4`         | Parallel source index fetches            |
@@ -154,6 +156,9 @@ brain/
 ```bash
 # Run tests
 uv run pytest -v
+
+# Clean up build artifacts, cache, generated data, and the SQLite database
+make clean
 
 # Run with debug logging
 uv run newshive --debug run

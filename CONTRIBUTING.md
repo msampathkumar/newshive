@@ -1,4 +1,4 @@
-# Contributing to NewsHive
+# Contributing to Newshive
 
 Thanks for your interest in contributing! This is a clean, modular Python project and new contributions are very welcome.
 
@@ -43,7 +43,7 @@ uv run newshive process --debug
 ## Project Structure
 
 ```
-src/news_hive/
+src/newshive/
 ├── log.py                   ← Colored logging (start here to understand output)
 ├── storage.py               ← All file I/O (blog_index_html/, article_html/, extracted_articles/)
 ├── metadata_manager.py      ← SQLite layer (blog_sources, blog_articles)
@@ -69,12 +69,19 @@ tests/
 - **SOLID + DRY** — one responsibility per class; no copy-paste logic
 - **No global mutable state** — pass dependencies explicitly
 
+### Configuration
+
+The project uses `src/newshive/config.py` for global application settings. You can override these values for local development and testing.
+
+- `PAGE_TIMEOUT_SECONDS`: Adjust this to increase or decrease the timeout for downloading individual articles. Default is `120` seconds.
+- `URL_IGNORE_PATTERNS`: Modify this list of regex patterns to include or exclude specific URLs during article discovery. For example, `r".*\.pdf$"` to ignore PDF files.
+
 ### Logging
 
 Use `ColorLogger` from `log.py`, not `print()` or the stdlib `logging` module directly.
 
 ```python
-from news_hive.log import ColorLogger
+from newshive.log import ColorLogger
 log = ColorLogger("my_module")   # pick a module color from MODULE_COLORS or add one
 
 log.debug("→ my_function start: param=...")   # called at start of every function

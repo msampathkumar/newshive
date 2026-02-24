@@ -1,4 +1,4 @@
-# Design Document — NewsHive
+# Design Document — Newshive
 
 > Architecture reference for developers. Explains *why* the system is built the way it is, not just *what* it does.
 
@@ -34,7 +34,7 @@ graph TD
 | `metadata_manager.py`        | SQLite read/write; no business logic           |
 | `article_discoverer.py`      | HTTP + HTML parsing + delta + domain filter    |
 | `task_orchestrator.py`       | Orchestration only; delegates to other modules |
-| `content_processor.py`       | LLM call only; no file I/O                     |
+| `content_processor.py`       | Extracts article text, date, title, GitHub links; LLM call for summary; prepends metadata to summary |
 | `cli.py`                     | User interface only; no business logic         |
 
 ---
@@ -122,7 +122,9 @@ CREATE TABLE blog_articles (
     source_url   TEXT,         -- which index page this came from
     status       TEXT,         -- downloaded | extracted | error_fetch | error_llm
     scraped_at   TEXT,
-    extracted_at TEXT
+    extracted_at TEXT,
+    published_date TEXT,       -- NEW: Article's published date (ISO format)
+    github_links TEXT          -- NEW: JSON array of GitHub repository links
 );
 ```
 
@@ -169,6 +171,12 @@ Color output is disabled by setting `NO_COLOR=1` or passing `--no-color` to any 
 
 ## Data Flow: End-to-End
 
+The end-to-end pipeline now includes enhanced article processing:
+- During article download, the raw HTML is saved.
+- During AI extraction, `ContentProcessor` extracts title, published date, and GitHub links from the raw HTML.
+- The AI-generated summary is then prepended with a Markdown metadata header containing the extracted title, date, and original URL.
+- The extracted `published_date` and `github_links` are also stored in the database.
+
 ```mermaid
 sequenceDiagram
     participant U as User / Scheduler
@@ -212,7 +220,7 @@ No code changes needed — just `source add <url>`. The domain filtering is auto
 Pass `--model <ollama-model-name>` at runtime. The `ContentProcessor` class is model-agnostic.
 
 ### Change the extraction prompt
-Edit `ContentProcessor.summarize()` in `content_processor.py`. The system prompt is in one place.
+Edit `ContentProcessor.summarize()` or modify the `system_prompt` within that method in `content_processor.py`. The `process_article` method orchestrates the full extraction.
 
 ### Add a new output format
 Add a new method to `StorageManager` (e.g. `save_json_article`) and call it from `task_orchestrator.py`. No other changes required.
