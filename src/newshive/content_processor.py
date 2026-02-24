@@ -2,6 +2,9 @@
 ContentProcessor — uses a local LLM via Ollama to extract and summarize article text for News Hive.
 """
 import ollama
+import re
+import trafilatura
+from datetime import datetime # NEW # NEW
 
 from newshive.log import ColorLogger
 
@@ -14,6 +17,52 @@ class ContentProcessor:
     def __init__(self, model_name: str = "gemma3:1b"):
         self.model_name = model_name
         log.debug(f"→ ContentProcessor init: model={model_name}")
+
+    def extract_text_and_date(self, raw_html: str, url: str) -> tuple[str | None, str | None]:
+        """
+        Extracts main article text and published date from raw HTML using Trafilatura.
+        Returns a tuple: (text, published_date_iso_format).
+        """
+        log.debug(f"→ extract_text_and_date: url={url}")
+        downloaded = trafilatura.bare_extraction(
+            raw_html,
+            url=url,
+            include_comments=False,
+            include_images=False,
+            include_formatting=False,
+            include_links=True, # We need links for GitHub extraction later
+        )
+
+        text = downloaded.text if downloaded and downloaded.text else None
+        date = downloaded.date if downloaded and downloaded.date else None
+        
+        if date:
+            # Ensure date is in ISO format
+            try:
+                date_obj = datetime.fromisoformat(date)
+                date = date_obj.isoformat()
+            except ValueError:
+                date = None # Fallback if trafilatura date is not ISO convertible
+
+        log.debug(f"← extract_text_and_date: text_len={len(text) if text else 0}, date={date}")
+        return text, date
+
+    def extract_github_links(self, text: str) -> list[str]:
+        """
+        Extracts GitHub repository links from the given text.
+        Looks for patterns like "github.com/user/repo".
+        """
+        log.debug(f"→ extract_github_links: text_length={len(text)}")
+        # Regex to find GitHub repository URLs
+        # It looks for github.com followed by an optional port, then username/repo name
+        github_pattern = r"https?://(?:www\.)?github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+"
+        
+        found_links = re.findall(github_pattern, text)
+        # Remove duplicates by converting to set and back to list
+        unique_links = list(set(found_links))
+        
+        log.debug(f"← extract_github_links: found {len(unique_links)} links")
+        return unique_links
 
     def summarize(self, text: str) -> str:
         """
@@ -43,3 +92,33 @@ class ContentProcessor:
         result = response.message.content
         log.debug(f"← summarize done: output_length={len(result)}")
         return result
+
+    def process_article(self, raw_html: str, url: str) -> dict:
+        """
+        Orchestrates extraction of text, published date, GitHub links,
+        and summary from raw article HTML.
+        Returns a dictionary of all extracted and processed data.
+        """
+        log.debug(f"→ process_article: url={url}")
+
+        # Step 1: Extract main text and published date
+        extracted_text, published_date = self.extract_text_and_date(raw_html, url)
+
+        # Step 2: Extract GitHub links (from the full raw HTML if text extraction is partial)
+        # Using raw_html for GitHub link extraction to catch all links
+        github_links = self.extract_github_links(raw_html)
+
+        summary = None
+        if extracted_text:
+            # Step 3: Summarize the extracted text
+            summary = self.summarize(extracted_text)
+        else:
+            log.warning(f"No text extracted for {url}, skipping summarization.")
+
+        log.debug(f"← process_article done: summary_len={len(summary) if summary else 0}, date={published_date}, github_links={len(github_links)}")
+        return {
+            "extracted_text": extracted_text,
+            "published_date": published_date,
+            "github_links": github_links,
+            "summary": summary,
+        }

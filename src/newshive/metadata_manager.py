@@ -54,6 +54,8 @@ class MetadataManager:
                 "status":       str,
                 "scraped_at":   str,
                 "extracted_at": str,
+                "published_date": str,  # NEW
+                "github_links": str,    # NEW (store as JSON string)
             }, pk="url")
             log.debug("Created table: blog_articles")
 
@@ -124,7 +126,7 @@ class MetadataManager:
             log.debug("← is_article_registered: False")
             return False
 
-    def register_article(self, url: str, source_url: str, status: str = STATUS_DOWNLOADED) -> None:
+    def register_article(self, url: str, source_url: str, status: str = STATUS_DOWNLOADED, published_date: str | None = None, github_links: str | None = None) -> None:
         """Insert or update an article record."""
         log.debug(f"→ register_article: url={url}, status={status}")
         db = sqlite_utils.Database(self.db_path)
@@ -135,6 +137,8 @@ class MetadataManager:
             "status":       status,
             "scraped_at":   now,
             "extracted_at": None,
+            "published_date": published_date,
+            "github_links": github_links,
         }, pk="url")
         log.debug("← register_article done")
 
@@ -147,6 +151,14 @@ class MetadataManager:
             update["extracted_at"] = self._now()
         db["blog_articles"].update(url, update)
         log.debug("← update_article_status done")
+
+    def get_article_source_url(self, article_url: str) -> str | None:
+        """Retrieve the source_url for a given article URL."""
+        db = sqlite_utils.Database(self.db_path)
+        row = db["blog_articles"].get(article_url)
+        if row:
+            return row["source_url"]
+        return None
 
     def get_pending_extraction(self, date: str | None = None) -> list[dict]:
         """

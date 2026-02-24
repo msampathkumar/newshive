@@ -17,6 +17,7 @@ Two main orchestrators:
 """
 import asyncio
 from datetime import datetime, timezone
+import json # NEW
 
 from newshive.log import ColorLogger
 from newshive.storage import StorageManager
@@ -152,32 +153,45 @@ async def _extract_one_article(
     log.debug(f"→ _extract_one_article: {url}")
 
     # Load saved article HTML
-    if not storage.has_article_html(url, date):
-        log.warning(f"Article HTML not found on disk (date={date}): {url}")
-        return False
-
-    import trafilatura
     html = storage.get_article_html(url, date)
-
-    # Extract clean text first
-    text = trafilatura.extract(html, include_links=False)
-    if not text:
-        log.warning(f"No text extractable from article: {url}")
-        db.update_article_status(url, STATUS_ERROR_LLM)
+    if not html:
+        log.warning(f"Article HTML not found on disk (date={date}): {url}")
+        db.update_article_status(url, STATUS_ERROR_FETCH) # Mark as error since HTML not found
         return False
 
-    # Run AI summarization (run sync in executor to not block event loop)
+    # Run AI processing (extraction + summarization)
     loop = asyncio.get_event_loop()
     try:
-        summary = await loop.run_in_executor(None, processor.summarize, text)
+        processed_data = await loop.run_in_executor(None, processor.process_article, html, url)
+        summary        = processed_data.get("summary")
+        extracted_text = processed_data.get("extracted_text")
+        published_date = processed_data.get("published_date")
+        github_links   = processed_data.get("github_links")
     except Exception as e:
         log.error(f"AI extraction failed for {url}: {e}")
         db.update_article_status(url, STATUS_ERROR_LLM)
         return False
 
-    # Save markdown
-    storage.save_extracted_article(url, summary, date)
-    db.update_article_status(url, STATUS_EXTRACTED)
+    if not extracted_text:
+        log.warning(f"No text extractable from article: {url}, skipping summarization.")
+        db.update_article_status(url, STATUS_ERROR_LLM)
+        return False
+
+    if not summary:
+        log.warning(f"No summary generated for article: {url}.")
+        # Proceed with other data if summary is None, mark as extracted.
+
+    # Save summary markdown
+    storage.save_extracted_article(url, summary or extracted_text, date) # Save summary, or full text if no summary
+
+    # Update metadata in DB
+    db.register_article( # Using upsert capability of register_article
+        url=url,
+        source_url=db.get_article_source_url(url), # Need to retrieve source_url
+        status=STATUS_EXTRACTED,
+        published_date=published_date,
+        github_links=json.dumps(github_links) if github_links else None,
+    )
     log.debug(f"← _extract_one_article done: {url}")
     return True
 
